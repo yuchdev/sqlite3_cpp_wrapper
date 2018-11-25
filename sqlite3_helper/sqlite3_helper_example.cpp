@@ -38,7 +38,8 @@ private:
 };
 
 
-static int select_callback(void *raw_data, int column_count, char **column_values, char **column_name) {
+static int select_callback(void *raw_data, int column_count, char **column_values, char **column_name)
+{
 
     const int finename_column = 0;
     const int entropy_column = 1;
@@ -47,6 +48,15 @@ static int select_callback(void *raw_data, int column_count, char **column_value
     FileTableReceiver::instance().add_row(
         column_values[finename_column], column_values[entropy_column] ? column_values[entropy_column] : "1.0");
     return 0;
+}
+
+void select_results()
+{
+    const auto& files_fable = FileTableReceiver::instance().get_table();
+    for (const auto& item : files_fable) {
+        std::cout << item.first << " entropy=" << item.second << '\n';
+    }
+
 }
 
 int main()
@@ -66,16 +76,28 @@ int main()
         std::cout << "Open database successfully\n\n";
     }
     db.exec("drop table filetable");
+
+    // check CREATE TABLE query
     db.exec("create table filetable(hash varchar(16), filename varchar(512), entropy real)");
+
+    // check INSERT INTO query
     db.exec("insert into filetable(hash, filename, entropy) values ('aaaaaaaaaaaaaaaa', 'C:/Temp/usernames.txt', 1.35)");
     db.exec("insert into filetable(hash, filename, entropy) values ('BBBBBBBBBBBBBBBB', 'C:/Windows/system32/abc.dll', 6.05)");
 
+    // check SELECT query
     db.exec("select filename, entropy from filetable", select_callback);
+    select_results();
+    
+    std::cout << "\n";
+    std::cout << "Perform UPDATE\n";
 
-    const auto& files_fable = FileTableReceiver::instance().get_table();
-    for (const auto& item : files_fable) {
-        std::cout << item.first << " entropy=" << item.second << '\n';
-    }
+    // check UPDATE query
+    db.exec("update filetable set entropy = 7.23 where hash=\"BBBBBBBBBBBBBBBB\"");
+
+    // check SELECT query
+    db.exec("select filename, entropy from filetable", select_callback);
+    select_results();
+
     // check error handling
     db.close();
 

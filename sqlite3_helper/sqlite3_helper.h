@@ -82,15 +82,9 @@ public:
     /// @brief Execute SQL query
     /// @return: SQLite error code
     /// See https://www.sqlite.org/rescode.html for details
-    int exec(const char* sql)
+    int exec(const char* sql, sqlite3_callback callback = nullptr)
     {
-        current_return_code_ = sqlite3_exec(db_, sql, nullptr, 0, 0);
-        return current_return_code_;
-    }
-
-    int exec(const char* sql, sqlite3_callback callback)
-    {
-        current_return_code_ = sqlite3_exec(db_, sql, callback, nullptr, 0);
+        current_return_code_ = sqlite3_exec(db_, sql, callback, nullptr, nullptr);
         return current_return_code_;
     }
 
