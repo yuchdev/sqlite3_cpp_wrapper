@@ -1,6 +1,6 @@
 # SQlite3 Helper
 
-Very lifgtweight header-only C++ RAII wrapper under SQlite3 ANSI C API. The header itself could be found in `sqlite3_helper` directory with the usage example.
+Very lightweight header-only C++ RAII wrapper under SQlite3 ANSI C API. The header itself could be found in `sqlite3_helper` directory with the usage example.
 
 C++ wrapper does not provide and thread safety, instead it relies on thread safety of SQLite3 (see `sqlite3_helper::is_threadsafe()` method)
 
