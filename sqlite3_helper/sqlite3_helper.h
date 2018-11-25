@@ -1,5 +1,6 @@
 #include <sqlite3.h>
 
+typedef int(*sqlite3_callback)(void*, int, char**, char**);
 
 /// @briefVery lightweight header-only C++ RAII wrapper under SQlite3 ANSI C API
 /// Class does not throw exceptions. It could be considered as not C++ way, 
@@ -84,6 +85,12 @@ public:
     int exec(const char* sql)
     {
         current_return_code_ = sqlite3_exec(db_, sql, nullptr, 0, 0);
+        return current_return_code_;
+    }
+
+    int exec(const char* sql, sqlite3_callback callback)
+    {
+        current_return_code_ = sqlite3_exec(db_, sql, callback, nullptr, 0);
         return current_return_code_;
     }
 
