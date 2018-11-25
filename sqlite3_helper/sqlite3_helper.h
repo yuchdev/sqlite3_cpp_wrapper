@@ -77,7 +77,7 @@ public:
         return current_return_code_; 
     }
 
-    std::string get_last_error_message() 
+    const char* get_last_error_message() 
     {
         return sqlite3_errstr(current_return_code_);
     }
