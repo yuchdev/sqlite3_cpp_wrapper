@@ -61,6 +61,7 @@ public:
     int open(const char* database_name)
     {
         current_return_code_ = sqlite3_open(database_name, &db_);
+        return current_return_code_;
     }
 
     /// @brief Close database handle
