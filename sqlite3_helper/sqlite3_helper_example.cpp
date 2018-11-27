@@ -5,6 +5,24 @@
 #include <cassert>
 #include <map>
 
+struct FileInfo
+{
+    std::wstring path;
+    double entropy;
+    uint64_t flags;
+};
+
+std::vector<FileInfo> read_file_list()
+{
+    std::vector<FileInfo> ret;
+    std::wstring id;
+    std::wstring path;
+    std::wstring entropy;
+    std::wstring flags;
+
+    return std::move(ret);
+}
+
 class FileTableReceiver
 {
 public:
