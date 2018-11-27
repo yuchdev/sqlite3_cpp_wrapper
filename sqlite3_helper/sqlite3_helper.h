@@ -109,13 +109,13 @@ public:
 
     /// @brief Return last error code of any SQLite operation
     /// If the code is not SQLITE_OK, helper is not in valid state
-    int get_last_error() 
+    int get_last_error() const
     { 
         return current_return_code_; 
     }
 
     /// @brief Return last error message based on error code 
-    const char* get_last_error_message() 
+    const char* get_last_error_message() const
     {
         return sqlite3_errstr(current_return_code_);
     }

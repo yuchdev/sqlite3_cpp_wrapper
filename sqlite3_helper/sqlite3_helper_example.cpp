@@ -30,6 +30,8 @@ public:
         return rows;
     }
 
+    static int select_callback(void *raw_data, int column_count, char **column_values, char **column_name);
+
 private:
     FileTableReceiver() = default;
     ~FileTableReceiver() = default;
@@ -37,8 +39,8 @@ private:
     std::map<std::string, float> rows;
 };
 
-
-static int select_callback(void *raw_data, int column_count, char **column_values, char **column_name)
+// static 
+int FileTableReceiver::select_callback(void *raw_data, int column_count, char **column_values, char **column_name)
 {
 
     const int finename_column = 0;
@@ -50,11 +52,21 @@ static int select_callback(void *raw_data, int column_count, char **column_value
     return 0;
 }
 
+
+void check_errors(const sqlite3_helper& db)
+{
+    if (db.get_last_error() != SQLITE_OK) {
+        std::cout << "Error executing SQL on closed database, code = " << db.get_last_error()
+            << "; description: " << db.get_last_error_message() << '\n';
+    }
+}
+
+
 void select_results()
 {
     const auto& files_fable = FileTableReceiver::instance().get_table();
     for (const auto& item : files_fable) {
-        std::cout << item.first << " entropy=" << item.second << '\n';
+        std::cout << '|' << item.first << '|' << item.second << '|' << '\n';
     }
 
 }
@@ -70,42 +82,56 @@ int main()
 
     sqlite3_helper db("files.db");
     if (!db) {
-        std::cout << "Can't open database: " << db.get_last_error_message() << "\n";
+        check_errors(db);
     }
     else {
         std::cout << "Open database successfully\n\n";
     }
     db.exec("drop table filetable");
+    check_errors(db);
+
+    std::cout << "Perform CREATE TABLE\n";
 
     // check CREATE TABLE query
-    db.exec("create table filetable(hash varchar(16), filename varchar(512), entropy real)");
+    db.exec("CREATE TABLE filetable(id INTEGER PRIMARY KEY AUTOINCREMENT, filename TEXT, entropy REAL)");
+    check_errors(db);
+
+    std::cout << "Perform INSERT INTO\n";
 
     // check INSERT INTO query
-    db.exec("insert into filetable(hash, filename, entropy) values ('aaaaaaaaaaaaaaaa', 'C:/Temp/usernames.txt', 1.35)");
-    db.exec("insert into filetable(hash, filename, entropy) values ('BBBBBBBBBBBBBBBB', 'C:/Windows/system32/abc.dll', 6.05)");
+    db.exec("INSERT INTO filetable(filename, entropy) VALUES ('C:/Temp/usernames.txt', 1.35)");
+    check_errors(db);
+
+    db.exec("INSERT INTO filetable(filename, entropy) VALUES ('C:/Windows/system32/abc.dll', 6.05)");
+    check_errors(db);
+
+    std::cout << "Perform SELECT\n";
 
     // check SELECT query
-    db.exec("select filename, entropy from filetable", select_callback);
+    db.exec("SELECT filename, entropy FROM filetable", &FileTableReceiver::select_callback);
+    check_errors(db);
     select_results();
     
-    std::cout << "\n";
     std::cout << "Perform UPDATE\n";
 
     // check UPDATE query
-    db.exec("update filetable set entropy = 7.23 where hash=\"BBBBBBBBBBBBBBBB\"");
+    db.exec("UPDATE filetable SET entropy = 7.23 WHERE id=1");
+    check_errors(db);
+
+    std::cout << "Perform SELECT after UPDATE\n";
 
     // check SELECT query
-    db.exec("select filename, entropy from filetable", select_callback);
+    db.exec("SELECT filename, entropy FROM filetable", &FileTableReceiver::select_callback);
+    check_errors(db);
     select_results();
+
+    std::cout << "Check error handling on closed database\n";
 
     // check error handling
     db.close();
 
-    db.exec("insert into filetable(hash, filename, entropy) values ('aaaaaaaaaaaaaaaa', 'C:/Temp/usernames.txt', 1.35)");
-    int error_code = db.get_last_error();
-    std::string error_msg = db.get_last_error_message();
-    std::cout << "Error executing SQL on closed database, code = " << error_code 
-        << "; description: " << error_msg << '\n';
+    db.exec("INSERT INTO filetable(filename, entropy) VALUES ('C:/Temp/usernames.txt', 1.35)");
+    check_errors(db);
 
     return 0;
 }
