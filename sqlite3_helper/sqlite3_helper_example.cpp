@@ -7,17 +7,19 @@
 #include <codecvt>
 #include <sstream>
 
-
+// @brief Structure for table record
 struct FileInfo
 {
     std::wstring path;
     double entropy;
 };
 
+/// @brief Singleton for receiving database records from callback
 class FileTableReceiver
 {
 public:
     
+    // @brief Meyers singleton
     static FileTableReceiver& instance()
     {
         static FileTableReceiver receiver;
@@ -37,17 +39,25 @@ public:
         }
     }
 
+    /// @just to see the result
     const std::map<std::wstring, float>& get_table()
     {
         return rows;
     }
 
+    /// @brief accept one record, every cell is in string representation
+    /// That's why every new table should have own callback
+    /// @param raw_data: any additional data for the record
+    /// @param column_count: fields in query (not in the whole record) 
+    /// @param column_values: values in UTF-8 encoding
+    /// @param column_name: field names
     static int select_callback(void *raw_data, int column_count, char **column_values, char **column_name);
 
 private:
     FileTableReceiver() = default;
     ~FileTableReceiver() = default;
 
+    /// Save table here
     std::map<std::wstring, float> rows;
 };
 
@@ -64,7 +74,7 @@ int FileTableReceiver::select_callback(void *raw_data, int column_count, char **
     return 0;
 }
 
-
+/// Just display the error code and message if the last operation failed
 void check_errors(const sqlite3_helper& db)
 {
     if (db.get_last_error() != SQLITE_OK) {
@@ -73,16 +83,16 @@ void check_errors(const sqlite3_helper& db)
     }
 }
 
-
+/// Show query results
 void select_results()
 {
     const auto& files_fable = FileTableReceiver::instance().get_table();
     for (const auto& item : files_fable) {
         std::wcout << L'|' << item.first << L'|' << item.second << L'|' << std::endl;
     }
-
 }
 
+/// Test with multiple encoding text records
 void unicode_test()
 {
     sqlite3_helper db("unicode_files.db");
@@ -130,9 +140,7 @@ void unicode_test()
     // Do not perform select_results() because of multiple locales
 }
 
-
-
-
+/// Simple test, create database, insert, select, text error handling (operations on closed database)
 void simple_test()
 {
     if (sqlite3_helper::is_threadsafe()) {
