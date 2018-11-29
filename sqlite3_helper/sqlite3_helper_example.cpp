@@ -1,27 +1,18 @@
-#include "sqlite3_helper.h"
+﻿#include "sqlite3_helper.h"
 #include <iostream>
 #include <string>
 #include <vector>
 #include <cassert>
 #include <map>
+#include <codecvt>
+#include <sstream>
+
 
 struct FileInfo
 {
     std::wstring path;
     double entropy;
-    uint64_t flags;
 };
-
-std::vector<FileInfo> read_file_list()
-{
-    std::vector<FileInfo> ret;
-    std::wstring id;
-    std::wstring path;
-    std::wstring entropy;
-    std::wstring flags;
-
-    return std::move(ret);
-}
 
 class FileTableReceiver
 {
@@ -35,15 +26,18 @@ public:
 
     void add_row(const char* filename, const char* entropy)
     {
+        std::wstring_convert<std::codecvt_utf8<wchar_t>> cv;
+        std::wstring wfilename = cv.from_bytes(std::string(filename));
+
         try{
-            rows[std::string(filename)] = std::stof(std::string(entropy));
+            rows[wfilename] = std::stof(std::string(entropy));
         }
-        catch (const std::invalid_argument& e){
-            rows[std::string(filename)] = 1.0;
+        catch (const std::invalid_argument&){
+            rows[wfilename] = -1.0;
         }
     }
 
-    const std::map<std::string, float>& get_table()
+    const std::map<std::wstring, float>& get_table()
     {
         return rows;
     }
@@ -54,19 +48,19 @@ private:
     FileTableReceiver() = default;
     ~FileTableReceiver() = default;
 
-    std::map<std::string, float> rows;
+    std::map<std::wstring, float> rows;
 };
 
 // static 
 int FileTableReceiver::select_callback(void *raw_data, int column_count, char **column_values, char **column_name)
 {
-
     const int finename_column = 0;
     const int entropy_column = 1;
     assert(std::string(column_name[finename_column]) == "filename");
     assert(std::string(column_name[entropy_column]) == "entropy");
-    FileTableReceiver::instance().add_row(
-        column_values[finename_column], column_values[entropy_column] ? column_values[entropy_column] : "1.0");
+    std::string path(column_values[finename_column]);
+    std::string entropy(column_values[entropy_column]);
+    FileTableReceiver::instance().add_row(path.c_str(), entropy.c_str());
     return 0;
 }
 
@@ -84,12 +78,62 @@ void select_results()
 {
     const auto& files_fable = FileTableReceiver::instance().get_table();
     for (const auto& item : files_fable) {
-        std::cout << '|' << item.first << '|' << item.second << '|' << '\n';
+        std::wcout << L'|' << item.first << L'|' << item.second << L'|' << std::endl;
     }
 
 }
 
-int main()
+void unicode_test()
+{
+    sqlite3_helper db("unicode_files.db");
+    if (!db) {
+        check_errors(db);
+    }
+    else {
+        std::cout << "Open database successfully\n\n";
+    }
+
+    std::cout << "Set UTF-8 as charset\n";
+    db.exec(R"(PRAGMA encoding = "UTF-8")");
+    check_errors(db);
+
+    db.exec("DROP TABLE IF EXISTS files");
+    check_errors(db);
+
+    std::cout << "Perform CREATE TABLE\n";
+    db.exec("CREATE TABLE files(id INTEGER PRIMARY KEY AUTOINCREMENT, filename TEXT, entropy REAL)");
+    check_errors(db);
+
+    std::vector<FileInfo> paths{
+        { FileInfo{{ L"'Im just a file.txt'" }, 4.01}},
+        { FileInfo{{ L"'Bröther may I have some lööps.docx'" }, 4.98}},
+        { FileInfo{{ L"'Бутылка для рашкована (Чечня круто).mp4'" }, 5.94}},
+        { FileInfo{{ L"'אלברט איינשטיין.pdf'" }, 7.98}},
+        { FileInfo{{ L"'西伯利亚是中国人.map'" }, 2.22}}
+    };
+
+    std::wstring_convert<std::codecvt_utf8<wchar_t>> cv;
+    
+    for (const FileInfo& file_info : paths) {
+        std::wstringstream wss;
+        wss << L"INSERT INTO files(filename, entropy) VALUES ("
+            << file_info.path << L", "
+            << file_info.entropy << L")";
+        std::wstring wsql(wss.str());
+        std::string sql = cv.to_bytes(wsql);
+        db.exec(sql.c_str());
+        check_errors(db);
+    }
+
+    db.exec("SELECT filename, entropy FROM files", &FileTableReceiver::select_callback);
+    check_errors(db);
+    // Do not perform select_results() because of multiple locales
+}
+
+
+
+
+void simple_test()
 {
     if (sqlite3_helper::is_threadsafe()) {
         std::cout << "Sqlite3 build is threadsafe\n";
@@ -129,7 +173,7 @@ int main()
     db.exec("SELECT filename, entropy FROM filetable", &FileTableReceiver::select_callback);
     check_errors(db);
     select_results();
-    
+
     std::cout << "Perform UPDATE\n";
 
     // check UPDATE query
@@ -150,6 +194,15 @@ int main()
 
     db.exec("INSERT INTO filetable(filename, entropy) VALUES ('C:/Temp/usernames.txt', 1.35)");
     check_errors(db);
+}
+
+int main()
+{
+    // Perform simple database creation test and error handling
+    simple_test();
+
+    // Perform test with Unicode data convertings into UTF-8
+    unicode_test();
 
     return 0;
 }
