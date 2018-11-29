@@ -209,7 +209,7 @@ int main()
     // Perform simple database creation test and error handling
     simple_test();
 
-    // Perform test with Unicode data convertings into UTF-8
+    // Perform test with Unicode data converting into UTF-8
     unicode_test();
 
     return 0;
