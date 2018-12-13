@@ -2,7 +2,7 @@
 
 typedef int(*sqlite3_callback)(void*, int, char**, char**);
 
-/// @briefVery lightweight header-only C++ RAII wrapper under SQlite3 ANSI C API
+/// @brief Very lightweight header-only C++ RAII wrapper under SQlite3 ANSI C API
 /// Class does not throw exceptions. It could be considered as not C++ way, 
 /// however it increases safety in low-level application like drivers
 class sqlite3_helper
